@@ -207,6 +207,13 @@ func (s *Server) handleRoutesSubtree(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// GET /api/v1/routes/{routeId}/location
+	if len(parts) == 2 && parts[1] == "location" && r.Method == http.MethodGet {
+		routeHub := s.hubManager.GetOrCreate(routeID)
+		writeJSON(w, http.StatusOK, routeHub.Latest())
+		return
+	}
+
 	// PUT /api/v1/routes/{routeId}/location
 	if len(parts) == 2 && parts[1] == "location" && r.Method == http.MethodPut {
 		if claims.Role != model.RoleDriver || claims.RouteID != routeID {
