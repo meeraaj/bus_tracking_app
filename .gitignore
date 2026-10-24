@@ -1,0 +1,23 @@
+# Gradle & Android build outputs
+.gradle/
+build/
+app/build/
+captures/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Local IDE & SDK files
+.idea/
+*.iml
+local.properties
+
+# Secrets & Firebase
+app/google-services.json
+*.jks
+*.keystore
+
+# OS files
+.DS_Store
+Thumbs.db

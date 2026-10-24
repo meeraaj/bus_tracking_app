@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bus marker for the map. Points "up" (north) so osmdroid's Marker rotation maps 1:1 to GPS bearing. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="44dp"
+    android:height="44dp"
+    android:viewportWidth="44"
+    android:viewportHeight="44">
+    <!-- Soft halo -->
+    <path
+        android:fillColor="#33FFB020"
+        android:pathData="M22,22m-21,0a21,21 0,1 1,42 0a21,21 0,1 1,-42 0" />
+    <!-- Heading arrow -->
+    <path
+        android:fillColor="#FFFFB020"
+        android:pathData="M22,1 L28,9 L16,9 Z" />
+    <!-- Body disc -->
+    <path
+        android:fillColor="#FFFFB020"
+        android:strokeColor="#FF0B1220"
+        android:strokeWidth="2"
+        android:pathData="M22,23m-13,0a13,13 0,1 1,26 0a13,13 0,1 1,-26 0" />
+    <!-- Bus glyph -->
+    <group android:translateX="13" android:translateY="14" android:scaleX="0.75" android:scaleY="0.75">
+        <path
+            android:fillColor="#FF0B1220"
+            android:pathData="M4,16c0,0.88 0.39,1.67 1,2.22V20c0,0.55 0.45,1 1,1h1c0.55,0 1,-0.45 1,-1v-1h8v1c0,0.55 0.45,1 1,1h1c0.55,0 1,-0.45 1,-1v-1.78c0.61,-0.55 1,-1.34 1,-2.22V6c0,-3.5 -3.58,-4 -8,-4s-8,0.5 -8,4v10zM7.5,17c-0.83,0 -1.5,-0.67 -1.5,-1.5S6.67,14 7.5,14s1.5,0.67 1.5,1.5S8.330,17 7.5,17zM16.5,17c-0.83,0 -1.5,-0.67 -1.5,-1.5s0.67,-1.5 1.5,-1.5 1.5,0.67 1.5,1.5 -0.67,1.5 -1.5,1.5zM18,11H6V6h12v5z" />
+    </group>
+</vector>

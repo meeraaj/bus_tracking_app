@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Campus Bus Tracker</string>
+
+    <!-- Foreground service notification -->
+    <string name="tracking_channel_name">Route broadcast</string>
+    <string name="tracking_channel_description">Shown while your bus location is being broadcast to students.</string>
+    <string name="tracking_notification_title">Broadcasting %1$s</string>
+    <string name="tracking_notification_text">%1$s km/h • every %2$d s</string>
+    <string name="tracking_notification_text_waiting">Waiting for GPS fix…</string>
+    <string name="tracking_notification_action_end">End Route</string>
+</resources>
