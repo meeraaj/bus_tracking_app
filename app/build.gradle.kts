@@ -30,9 +30,9 @@ android {
         buildConfigField("String", "DEFAULT_ROUTE_ID", "\"route_85\"")
         // Driver location transmission interval (ms).
         buildConfigField("long", "LOCATION_INTERVAL_MS", "3000L")
-        // Cloud Go WebSocket Backend URLs (set your Render/Fly.io/Railway URL here once deployed).
-        buildConfigField("String", "BACKEND_BASE_URL", "\"\"")
-        buildConfigField("String", "BACKEND_WS_URL", "\"\"")
+        // Cloud Go WebSocket Backend URLs (Google Cloud Run in asia-south1 Mumbai).
+        buildConfigField("String", "BACKEND_BASE_URL", "\"https://bus-tracking-app-15590982692.asia-south1.run.app\"")
+        buildConfigField("String", "BACKEND_WS_URL", "\"wss://bus-tracking-app-15590982692.asia-south1.run.app\"")
     }
 
     buildTypes {
