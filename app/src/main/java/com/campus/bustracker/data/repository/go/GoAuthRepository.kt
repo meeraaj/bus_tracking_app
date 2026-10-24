@@ -18,8 +18,9 @@ import javax.inject.Singleton
 
 @Serializable
 private data class DriverAuthReq(
-    val routeId: String,
-    val pin: String
+    val email: String,
+    val secretKey: String,
+    val routeId: String
 )
 
 @Serializable
@@ -60,7 +61,13 @@ class GoAuthRepository @Inject constructor(
                 require(baseUrl.isNotEmpty()) { "BACKEND_BASE_URL is not configured" }
 
                 val routeId = extractRouteId(email)
-                val payload = json.encodeToString(DriverAuthReq(routeId = routeId, pin = secretKey.trim()))
+                val payload = json.encodeToString(
+                    DriverAuthReq(
+                        email = email.trim(),
+                        secretKey = secretKey.trim(),
+                        routeId = routeId
+                    )
+                )
                 val request = Request.Builder()
                     .url("$baseUrl/api/v1/auth/driver")
                     .post(payload.toRequestBody(jsonMediaType))

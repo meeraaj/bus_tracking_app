@@ -45,12 +45,29 @@ func main() {
 	driverKey := envOrDefault("DRIVER_SECRET_KEY", "1234")
 	driverRoute := envOrDefault("DRIVER_ROUTE_ID", "route_85")
 
+	driverPin85 := envOrDefault("DRIVER_PIN_85", "8585")
+	driverPinDefault := envOrDefault("DRIVER_PIN_DEFAULT", "1234")
+
 	authService := auth.NewService(jwtSecret, []auth.DriverAccount{
 		{
 			DriverID:      "driver_route_85",
+			Email:         "driver85@campus.edu",
+			SecretKey:     driverPin85,
+			AssignedRoute: "route_85",
+			Active:        true,
+		},
+		{
+			DriverID:      "driver_route_85_alt",
 			Email:         driverEmail,
 			SecretKey:     driverKey,
 			AssignedRoute: driverRoute,
+			Active:        true,
+		},
+		{
+			DriverID:      "driver_generic",
+			Email:         "driver@campus.edu",
+			SecretKey:     driverPinDefault,
+			AssignedRoute: "route_85",
 			Active:        true,
 		},
 	}, 12*time.Hour)
