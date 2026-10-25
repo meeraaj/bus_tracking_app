@@ -93,6 +93,18 @@ func (h *RouteHub) MarkOffline(now time.Time) {
 	h.Publish(offlineLoc)
 }
 
+// Latest returns a copy of the most recently received BusLocation, or a default offline state if none received yet.
+func (h *RouteHub) Latest() model.BusLocation {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	if h.lastLocation != nil {
+		return *h.lastLocation
+	}
+	return model.BusLocation{
+		Status: model.StatusOffline,
+	}
+}
+
 type Manager struct {
 	mu   sync.RWMutex
 	hubs map[string]*RouteHub
