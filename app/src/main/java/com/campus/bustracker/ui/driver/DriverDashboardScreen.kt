@@ -265,6 +265,98 @@ fun DriverDashboardScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // Pick-up Points / Stop Crossing Log Card
+            Text(
+                text = "STOP CROSSINGS LOG (${uiState.crossingEvents.size}/${uiState.routeData?.stops?.size ?: 0})",
+                style = MaterialTheme.typography.labelSmall,
+                color = TextMuted
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    if (uiState.crossingEvents.isEmpty()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                Icons.Default.PinDrop,
+                                contentDescription = null,
+                                tint = TextMuted,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "No stops crossed yet. When you drive within 35m of a stop, it will be logged here.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                        }
+                    } else {
+                        uiState.crossingEvents.forEachIndexed { index, event ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .background(SuccessGreen),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "${event.sequenceOrder}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Navy950
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = event.stopName,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = TextPrimary
+                                        )
+                                        Text(
+                                            text = "${String.format("%.0f", event.speedKmh)} km/h · ±${String.format("%.1f", event.distanceMeters)}m",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = TextSecondary
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = event.formattedTime,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AmberPrimary
+                                )
+                            }
+                            if (index < uiState.crossingEvents.lastIndex) {
+                                Spacer(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(1.dp)
+                                        .background(Navy800)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             // Route Details Card
             val route = uiState.routeData
             if (route != null) {

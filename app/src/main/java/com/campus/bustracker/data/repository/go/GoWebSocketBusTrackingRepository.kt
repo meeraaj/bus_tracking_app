@@ -60,7 +60,7 @@ class GoWebSocketBusTrackingRepository @Inject constructor(
 
     override suspend fun getRouteDetails(routeId: String): RouteData = withContext(Dispatchers.IO) {
         // Offline-first guardrail: load road-snapped route geometry from bundled assets first.
-        routeAssetDataSource.loadRoute(routeId)
+        routeAssetDataSource.getRouteData(routeId)
     }
 
     override fun observeBusLocation(routeId: String): Flow<BusLocation> = callbackFlow {
@@ -69,6 +69,8 @@ class GoWebSocketBusTrackingRepository @Inject constructor(
 
         var currentSocket: WebSocket? = null
         var retryAttempt = 0
+
+        var scheduleReconnect: (() -> Unit)? = null
 
         fun connectSubscriber() {
             if (!scope.isActive) return
@@ -90,32 +92,33 @@ class GoWebSocketBusTrackingRepository @Inject constructor(
                         runCatching {
                             json.decodeFromString<BusLocation>(text)
                         }.onSuccess { location ->
-                            if (LocationPayloadValidator.isValid(location)) {
+                            if (LocationPayloadValidator.validateForBroadcast(location).isSuccess) {
                                 trySend(location)
                             }
                         }
                     }
 
                     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                        scheduleReconnect()
+                        scheduleReconnect?.invoke()
                     }
 
                     override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                         if (code != 1000) {
-                            scheduleReconnect()
+                            scheduleReconnect?.invoke()
                         }
                     }
                 }
             )
         }
 
-        fun scheduleReconnect() {
-            if (!scope.isActive) return
-            scope.launch {
-                val backoffMs = (1000L shl retryAttempt.coerceAtMost(4)).coerceAtMost(15_000L)
-                retryAttempt++
-                delay(backoffMs)
-                connectSubscriber()
+        scheduleReconnect = {
+            if (scope.isActive) {
+                scope.launch {
+                    val backoffMs = (1000L shl retryAttempt.coerceAtMost(4)).coerceAtMost(15_000L)
+                    retryAttempt++
+                    delay(backoffMs)
+                    connectSubscriber()
+                }
             }
         }
 
@@ -130,7 +133,7 @@ class GoWebSocketBusTrackingRepository @Inject constructor(
     override suspend fun updateDriverLocation(routeId: String, location: BusLocation): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
-                require(LocationPayloadValidator.isValid(location)) {
+                require(LocationPayloadValidator.validateForBroadcast(location).isSuccess) {
                     "Telemetry rejected by client-side geofence/speed/timestamp validator"
                 }
                 lastKnownDriverLocation = location
@@ -151,7 +154,7 @@ class GoWebSocketBusTrackingRepository @Inject constructor(
             runCatching {
                 val updated = lastKnownDriverLocation.copy(
                     status = status,
-                    speed = if (status == BusLocation.STATUS_OFFLINE) 0f else lastKnownDriverLocation.speed,
+                    speedKmh = if (status == BusLocation.STATUS_OFFLINE) 0f else lastKnownDriverLocation.speedKmh,
                     timestamp = System.currentTimeMillis()
                 )
                 lastKnownDriverLocation = updated

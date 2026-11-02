@@ -9,6 +9,7 @@ import com.campus.bustracker.data.model.BusLocation
 import com.campus.bustracker.data.repository.BusTrackingRepository
 import com.campus.bustracker.data.repository.SessionRepository
 import com.campus.bustracker.service.LocationServiceController
+import com.campus.bustracker.service.StopCrossingLogger
 import com.campus.bustracker.service.TrackingStateHolder
 import com.campus.bustracker.ui.navigation.ScreenRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,7 +27,8 @@ class DriverViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val busTrackingRepository: BusTrackingRepository,
     private val sessionRepository: SessionRepository,
-    private val trackingStateHolder: TrackingStateHolder
+    private val trackingStateHolder: TrackingStateHolder,
+    private val stopCrossingLogger: StopCrossingLogger
 ) : ViewModel() {
 
     val routeId: String = runCatching {
@@ -39,14 +41,22 @@ class DriverViewModel @Inject constructor(
 
     val uiState: StateFlow<DriverUiState> = combine(
         _localState,
-        trackingStateHolder.telemetry
-    ) { local, telemetry ->
-        local.copy(telemetry = telemetry)
+        trackingStateHolder.telemetry,
+        stopCrossingLogger.crossingEvents
+    ) { local, telemetry, crossings ->
+        local.copy(
+            telemetry = telemetry,
+            crossingEvents = crossings
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = DriverUiState(routeId = routeId)
     )
+
+    fun clearCrossingLogs() {
+        stopCrossingLogger.clearLog()
+    }
 
     init {
         loadRoute()

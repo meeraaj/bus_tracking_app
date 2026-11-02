@@ -41,6 +41,9 @@ class LocationService : LifecycleService() {
     @Inject
     lateinit var trackingStateHolder: TrackingStateHolder
 
+    @Inject
+    lateinit var stopCrossingLogger: StopCrossingLogger
+
     private var activeRouteId: String = BuildConfig.DEFAULT_ROUTE_ID
     private var isTrackingActive: Boolean = false
 
@@ -94,6 +97,10 @@ class LocationService : LifecycleService() {
                 transmissionIntervalMs = BuildConfig.LOCATION_INTERVAL_MS,
                 connectionStatus = ConnectionStatus.CONNECTED
             )
+        }
+
+        lifecycleScope.launch {
+            stopCrossingLogger.prepareForRoute(routeId)
         }
 
         requestFusedLocationUpdates()
@@ -153,6 +160,14 @@ class LocationService : LifecycleService() {
             speedKmh = speedKmh,
             timestamp = timestamp,
             status = BusLocation.STATUS_ACTIVE
+        )
+
+        // Log stop crossings when near pick-up points
+        stopCrossingLogger.onLocationUpdate(
+            latitude = location.latitude,
+            longitude = location.longitude,
+            speedKmh = speedKmh,
+            timestamp = timestamp
         )
 
         // Broadcast current coordinates to /routes/{routeId}/live_location
