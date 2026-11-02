@@ -15,7 +15,7 @@ import (
 
 const (
 	EarthRadiusMeters   = 6371000.0
-	ArrivalRadiusMeters = 50.0 // 50m detection radius for bus stops
+	ArrivalRadiusMeters = 80.0 // 80m detection radius for road corridor bus stops
 )
 
 type StopArrivalRecord struct {

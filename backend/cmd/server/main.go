@@ -246,6 +246,8 @@ func (s *Server) handleRoutesSubtree(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		s.stopTracker.ProcessDriverTelemetry(routeID, claims.Sub, sanitized, time.Now())
+
 		routeHub := s.hubManager.GetOrCreate(routeID)
 		routeHub.Publish(sanitized)
 		writeJSON(w, http.StatusOK, map[string]string{"status": "published"})

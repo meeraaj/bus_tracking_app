@@ -65,7 +65,7 @@ class StopCrossingLogger @Inject constructor(
             activeRouteId = routeId
             crossedStopIds.clear()
             runCatching {
-                val route = routeAssetDataSource.loadRoute(routeId)
+                val route = routeAssetDataSource.getRouteData(routeId)
                 cachedStops = route.stops.sortedBy { it.sequenceOrder }
                 writeDiskLog("=== START TRACKING SESSION: Route $routeId (${cachedStops.size} stops registered) ===")
             }
