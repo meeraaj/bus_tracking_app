@@ -18,11 +18,15 @@ data class TrackingTelemetry(
     val isBroadcasting: Boolean = false,
     val currentSpeedKmh: Float = 0f,
     val accuracyMeters: Float = 0f,
+    val lastLatitude: Double = 0.0,
+    val lastLongitude: Double = 0.0,
+    val lastGpsFixMillis: Long = 0L,
     val lastTransmittedMillis: Long = 0L,
     val packetsSentCount: Long = 0L,
     val transmissionIntervalMs: Long = 3000L,
     val connectionStatus: ConnectionStatus = ConnectionStatus.IDLE,
-    val lastError: String? = null
+    val lastError: String? = null,
+    val activeTransport: String = "STANDBY"
 )
 
 @Singleton

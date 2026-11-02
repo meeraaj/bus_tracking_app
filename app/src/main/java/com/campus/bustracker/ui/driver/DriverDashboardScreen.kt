@@ -33,15 +33,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.GpsFixed
+import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.PinDrop
 import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.StopCircle
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -64,6 +68,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import java.util.Locale
 import com.campus.bustracker.service.ConnectionStatus
 import com.campus.bustracker.ui.common.GlassCard
 import com.campus.bustracker.ui.common.PermissionRationaleDialog
@@ -189,6 +194,37 @@ fun DriverDashboardScreen(
                 }
             }
 
+            // Connection / Error Banner
+            if (uiState.telemetry.lastError != null) {
+                Spacer(modifier = Modifier.height(14.dp))
+                GlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    backgroundColor = ErrorRed.copy(alpha = 0.15f),
+                    borderColor = ErrorRed.copy(alpha = 0.6f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Warning, contentDescription = null, tint = ErrorRed)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Telemetry Transmission Notice",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = ErrorRed
+                            )
+                            Text(
+                                text = uiState.telemetry.lastError ?: "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextPrimary
+                            )
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(20.dp))
 
             // Main Route Broadcast Toggle Card
@@ -263,6 +299,41 @@ fun DriverDashboardScreen(
                 )
             }
 
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Live GPS Hardware Coordinates Tile Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                val latStr = if (uiState.telemetry.lastLatitude != 0.0) {
+                    String.format("%.5f", uiState.telemetry.lastLatitude)
+                } else {
+                    "--"
+                }
+                val lngStr = if (uiState.telemetry.lastLongitude != 0.0) {
+                    String.format("%.5f", uiState.telemetry.lastLongitude)
+                } else {
+                    "--"
+                }
+                TelemetryTile(
+                    title = "GPS Latitude",
+                    value = latStr,
+                    unit = "°N",
+                    icon = Icons.Default.Navigation,
+                    accentColor = TealRoute,
+                    modifier = Modifier.weight(1f)
+                )
+                TelemetryTile(
+                    title = "GPS Longitude",
+                    value = lngStr,
+                    unit = "°E",
+                    icon = Icons.Default.PinDrop,
+                    accentColor = TealRoute,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             // Pick-up Points / Stop Crossing Log Card
@@ -288,7 +359,7 @@ fun DriverDashboardScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "No stops crossed yet. When you drive within 35m of a stop, it will be logged here.",
+                                text = "No stops crossed yet. When you drive within 80m of a stop, it will be logged here.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = TextSecondary
                             )
@@ -343,6 +414,119 @@ fun DriverDashboardScreen(
                                 )
                             }
                             if (index < uiState.crossingEvents.lastIndex) {
+                                Spacer(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(1.dp)
+                                        .background(Navy800)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Server-Side Cloud Proof Log Card
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "SERVER CLOUD PROOF (${uiState.serverCrossings.size} RECORDED)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextMuted
+                )
+                IconButton(
+                    onClick = { viewModel.refreshServerCrossings() },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = "Sync server logs",
+                        tint = AmberPrimary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    if (uiState.serverCrossings.isEmpty()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                Icons.Default.CloudDone,
+                                contentDescription = null,
+                                tint = TextMuted,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "No server crossings synced yet. Tap the refresh icon above to fetch cloud records.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                        }
+                    } else {
+                        uiState.serverCrossings.forEachIndexed { index, record ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .background(TealRoute),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "${record.sequenceOrder}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Navy950
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = record.stopName,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = TextPrimary
+                                        )
+                                        Text(
+                                            text = "Server confirmed · ±${String.format(Locale.US, "%.1f", record.distanceMeters)}m · ${String.format(Locale.US, "%.0f", record.speedKmh)} km/h",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = TextSecondary
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = if (record.formattedTime.contains(" ")) {
+                                        record.formattedTime.split(" ").getOrNull(1) ?: record.formattedTime
+                                    } else {
+                                        record.formattedTime
+                                    },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = SuccessGreen
+                                )
+                            }
+                            if (index < uiState.serverCrossings.lastIndex) {
                                 Spacer(
                                     modifier = Modifier
                                         .fillMaxWidth()

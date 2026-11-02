@@ -4,6 +4,7 @@ import android.content.Context
 import com.campus.bustracker.BuildConfig
 import com.campus.bustracker.data.model.BusLocation
 import com.campus.bustracker.data.model.RouteData
+import com.campus.bustracker.data.model.ServerStopCrossingRecord
 import com.campus.bustracker.data.repository.firebase.FirebaseBusTrackingRepository
 import com.campus.bustracker.data.repository.go.GoWebSocketBusTrackingRepository
 import com.campus.bustracker.data.repository.mock.MockBusTrackingRepository
@@ -54,5 +55,9 @@ class SmartBusTrackingRepository @Inject constructor(
 
     override suspend fun setDriverStatus(routeId: String, status: String): Result<Unit> {
         return activeDelegate.setDriverStatus(routeId, status)
+    }
+
+    override suspend fun fetchServerCrossings(routeId: String): Result<List<ServerStopCrossingRecord>> {
+        return activeDelegate.fetchServerCrossings(routeId)
     }
 }

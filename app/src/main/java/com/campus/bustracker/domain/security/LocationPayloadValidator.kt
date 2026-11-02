@@ -15,8 +15,8 @@ object LocationPayloadValidator {
     const val MAX_LONGITUDE = 80.5
 
     const val MAX_SPEED_KMH = 120f
-    const val MAX_CLOCK_SKEW_FUTURE_MS = 5_000L
-    const val MAX_STALE_WINDOW_MS = 60_000L
+    const val MAX_CLOCK_SKEW_FUTURE_MS = 15_000L
+    const val MAX_STALE_WINDOW_MS = 120_000L
 
     private val ROUTE_ID_REGEX = Regex("^[a-zA-Z0-9_-]{2,32}$")
 

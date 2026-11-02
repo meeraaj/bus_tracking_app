@@ -18,8 +18,8 @@ const (
 	MaxLongitude = 80.5
 
 	MaxSpeedKmh        = 120.0
-	MaxFutureSkewMs    = 5_000
-	MaxStaleWindowMs   = 60_000
+	MaxFutureSkewMs    = 15_000
+	MaxStaleWindowMs   = 120_000
 	MaxWebSocketFrameB = 2048
 )
 

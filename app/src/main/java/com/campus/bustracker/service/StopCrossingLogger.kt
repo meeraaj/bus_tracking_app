@@ -44,7 +44,7 @@ class StopCrossingLogger @Inject constructor(
     private val routeAssetDataSource: RouteAssetDataSource
 ) {
     private val tag = "StopCrossingLogger"
-    private val arrivalRadiusMeters = 35.0 // Crossing threshold (meters)
+    private val arrivalRadiusMeters = 80.0 // 80m corridor threshold matching server-side detection
 
     private val crossedStopIds = mutableSetOf<String>()
     private var cachedStops: List<RouteStop> = emptyList()

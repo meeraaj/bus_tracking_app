@@ -151,7 +151,30 @@ class LocationService : LifecycleService() {
 
         val speedKmh = (location.speed * 3.6f).coerceAtLeast(0f)
         val bearing = if (location.hasBearing()) location.bearing else 0f
-        val timestamp = location.time.takeIf { it > 0 } ?: System.currentTimeMillis()
+        val timestamp = System.currentTimeMillis()
+
+        // 1. Immediately update UI telemetry dials directly from GPS hardware readings.
+        // Decoupled from network transmission: dials (Speed, Accuracy, Fix) are ALWAYS live and active!
+        trackingStateHolder.updateTelemetry { current ->
+            current.copy(
+                currentSpeedKmh = speedKmh,
+                accuracyMeters = location.accuracy,
+                lastLatitude = location.latitude,
+                lastLongitude = location.longitude,
+                lastGpsFixMillis = timestamp,
+                connectionStatus = if (current.connectionStatus == ConnectionStatus.ERROR) current.connectionStatus else ConnectionStatus.TRANSMITTING
+            )
+        }
+
+        updateForegroundNotification(speedKmh)
+
+        // 2. Check and log stop crossings locally on-device
+        stopCrossingLogger.onLocationUpdate(
+            latitude = location.latitude,
+            longitude = location.longitude,
+            speedKmh = speedKmh,
+            timestamp = timestamp
+        )
 
         val busLoc = BusLocation(
             latitude = location.latitude,
@@ -162,38 +185,24 @@ class LocationService : LifecycleService() {
             status = BusLocation.STATUS_ACTIVE
         )
 
-        // Log stop crossings when near pick-up points
-        stopCrossingLogger.onLocationUpdate(
-            latitude = location.latitude,
-            longitude = location.longitude,
-            speedKmh = speedKmh,
-            timestamp = timestamp
-        )
-
-        // Broadcast current coordinates to /routes/{routeId}/live_location
+        // 3. Asynchronously transmit to backend via WebSocket (with automatic REST HTTP fallback)
         lifecycleScope.launch {
-            trackingStateHolder.updateTelemetry {
-                it.copy(connectionStatus = ConnectionStatus.TRANSMITTING)
-            }
-
             val result = busTrackingRepository.updateDriverLocation(activeRouteId, busLoc)
             if (result.isSuccess) {
                 trackingStateHolder.updateTelemetry { current ->
                     current.copy(
-                        currentSpeedKmh = speedKmh,
-                        accuracyMeters = location.accuracy,
                         lastTransmittedMillis = timestamp,
                         packetsSentCount = current.packetsSentCount + 1,
                         connectionStatus = ConnectionStatus.CONNECTED,
                         lastError = null
                     )
                 }
-                updateForegroundNotification(speedKmh)
             } else {
-                trackingStateHolder.updateTelemetry {
-                    it.copy(
+                val errorDetail = result.exceptionOrNull()?.localizedMessage ?: "Transmission failed"
+                trackingStateHolder.updateTelemetry { current ->
+                    current.copy(
                         connectionStatus = ConnectionStatus.ERROR,
-                        lastError = result.exceptionOrNull()?.localizedMessage
+                        lastError = errorDetail
                     )
                 }
             }

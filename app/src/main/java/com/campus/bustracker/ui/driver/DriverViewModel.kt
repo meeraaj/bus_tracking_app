@@ -58,8 +58,22 @@ class DriverViewModel @Inject constructor(
         stopCrossingLogger.clearLog()
     }
 
+    fun refreshServerCrossings() {
+        viewModelScope.launch {
+            _localState.update { it.copy(isRefreshingServerCrossings = true) }
+            val result = busTrackingRepository.fetchServerCrossings(routeId)
+            _localState.update { current ->
+                current.copy(
+                    isRefreshingServerCrossings = false,
+                    serverCrossings = result.getOrElse { current.serverCrossings }
+                )
+            }
+        }
+    }
+
     init {
         loadRoute()
+        refreshServerCrossings()
     }
 
     private fun loadRoute() {

@@ -2,6 +2,7 @@ package com.campus.bustracker.data.repository
 
 import com.campus.bustracker.data.model.BusLocation
 import com.campus.bustracker.data.model.RouteData
+import com.campus.bustracker.data.model.ServerStopCrossingRecord
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -33,4 +34,10 @@ interface BusTrackingRepository {
      * Driver: Set status to OFFLINE on trip end or disconnect (maps to /routes/{routeId}/live_location/status).
      */
     suspend fun setDriverStatus(routeId: String, status: String): Result<Unit>
+
+    /**
+     * Fetch server-confirmed stop crossing events from the backend (maps to /api/v1/logs/crossings).
+     */
+    suspend fun fetchServerCrossings(routeId: String): Result<List<ServerStopCrossingRecord>> =
+        Result.success(emptyList())
 }
