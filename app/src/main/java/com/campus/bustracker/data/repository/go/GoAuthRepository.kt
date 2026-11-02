@@ -74,12 +74,15 @@ class GoAuthRepository @Inject constructor(
                     .build()
 
                 httpClient.newCall(request).execute().use { response ->
+                    val responseBody = response.body?.string().orEmpty()
                     if (!response.isSuccessful) {
-                        throw IllegalArgumentException("Driver authentication failed (HTTP ${response.code})")
+                        val serverErrorMsg = runCatching {
+                            json.decodeFromString<Map<String, String>>(responseBody)["error"]
+                        }.getOrNull()
+                        val detail = serverErrorMsg ?: "HTTP ${response.code}"
+                        throw IllegalArgumentException("Authentication failed: $detail")
                     }
-                    val body = response.body?.string()
-                        ?: throw IllegalStateException("Empty auth response from Go backend")
-                    val parsed = json.decodeFromString<AuthResp>(body)
+                    val parsed = json.decodeFromString<AuthResp>(responseBody)
                     tokenManager.saveToken(parsed.token)
                     parsed.routeId
                 }
