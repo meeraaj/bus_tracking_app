@@ -20,6 +20,7 @@ import (
 	"github.com/campus/bustracker-backend/internal/model"
 	"github.com/campus/bustracker-backend/internal/routes"
 	"github.com/campus/bustracker-backend/internal/security"
+	"github.com/campus/bustracker-backend/internal/tracker"
 	"github.com/campus/bustracker-backend/internal/ws"
 )
 
@@ -29,6 +30,7 @@ type Server struct {
 	routeStore    *routes.Store
 	authLimiter   *security.TokenBucketLimiter
 	driverLimiter *security.TokenBucketLimiter
+	stopTracker   *tracker.ServerStopTracker
 }
 
 func main() {
@@ -77,12 +79,16 @@ func main() {
 		log.Fatalf("failed to load embedded route store: %v", err)
 	}
 
+	stopLogFile := envOrDefault("STOP_LOG_FILE", "/tmp/stop_crossings_server.log")
+	stopTracker := tracker.NewServerStopTracker(routeStore, stopLogFile)
+
 	srv := &Server{
 		authService:   authService,
 		hubManager:    hub.NewManager(),
 		routeStore:    routeStore,
 		authLimiter:   security.NewTokenBucketLimiter(0.2, 6.0), // ~12 req/min with burst of 6 per IP
 		driverLimiter: security.NewTokenBucketLimiter(2.0, 4.0), // max 2 GPS frames/sec per driver
+		stopTracker:   stopTracker,
 	}
 
 	mux := http.NewServeMux()
@@ -91,6 +97,7 @@ func main() {
 	mux.HandleFunc("/api/v1/auth/student", srv.handleStudentAuth)
 	mux.HandleFunc("/api/v1/routes/", srv.handleRoutesSubtree)
 	mux.HandleFunc("/ws/routes/", srv.handleWebSocketSubtree)
+	mux.HandleFunc("/api/v1/logs/crossings", srv.handleStopCrossingsLog)
 
 	httpServer := &http.Server{
 		Addr:              ":" + port,
@@ -340,6 +347,9 @@ func (s *Server) serveDriverWebSocket(w http.ResponseWriter, r *http.Request, ro
 			continue
 		}
 
+		// Server-side stop arrival verification & audit logging
+		s.stopTracker.ProcessDriverTelemetry(routeID, driverID, sanitized, time.Now())
+
 		routeHub.Publish(sanitized)
 	}
 }
@@ -397,6 +407,27 @@ func (s *Server) serveStudentWebSocket(w http.ResponseWriter, r *http.Request, r
 			}
 		}
 	}
+}
+
+func (s *Server) handleStopCrossingsLog(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodDelete {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	routeID := r.URL.Query().Get("routeId")
+	if r.Method == http.MethodDelete {
+		s.stopTracker.ResetRoute(routeID)
+		writeJSON(w, http.StatusOK, map[string]string{"status": "cleared", "routeId": routeID})
+		return
+	}
+
+	events := s.stopTracker.GetEvents(routeID)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"routeId": routeID,
+		"total":   len(events),
+		"events":  events,
+	})
 }
 
 func (s *Server) authenticateRequest(r *http.Request) (*auth.Claims, error) {
