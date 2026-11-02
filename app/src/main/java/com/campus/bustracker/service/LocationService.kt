@@ -9,8 +9,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.os.Build
 import android.os.Looper
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.lifecycle.LifecycleService
@@ -46,12 +49,17 @@ class LocationService : LifecycleService() {
 
     private var activeRouteId: String = BuildConfig.DEFAULT_ROUTE_ID
     private var isTrackingActive: Boolean = false
+    private var locationManager: LocationManager? = null
 
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             val location: Location = result.lastLocation ?: return
             handleNewLocation(location)
         }
+    }
+
+    private val nativeLocationListener = LocationListener { location ->
+        handleNewLocation(location)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -108,6 +116,40 @@ class LocationService : LifecycleService() {
 
     @SuppressLint("MissingPermission")
     private fun requestFusedLocationUpdates() {
+        locationManager = getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+
+        val isGpsEnabled = locationManager?.isProviderEnabled(LocationManager.GPS_PROVIDER) == true
+        val isNetworkEnabled = locationManager?.isProviderEnabled(LocationManager.NETWORK_PROVIDER) == true
+
+        if (!isGpsEnabled && !isNetworkEnabled) {
+            trackingStateHolder.updateTelemetry {
+                it.copy(
+                    connectionStatus = ConnectionStatus.ERROR,
+                    lastError = "GPS/Location is OFF in Android settings! Please turn on Location in Quick Settings."
+                )
+            }
+        }
+
+        // 1. Immediately dispatch best last known location so telemetry tiles wake up instantly!
+        fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
+            if (loc != null) {
+                Log.i("LocationService", "Fused lastLocation acquired: (${loc.latitude}, ${loc.longitude})")
+                handleNewLocation(loc)
+            }
+        }
+
+        val lastGps = runCatching { locationManager?.getLastKnownLocation(LocationManager.GPS_PROVIDER) }.getOrNull()
+        val lastNet = runCatching { locationManager?.getLastKnownLocation(LocationManager.NETWORK_PROVIDER) }.getOrNull()
+        val fallbackLast = when {
+            lastGps != null && lastNet != null -> if (lastGps.time > lastNet.time) lastGps else lastNet
+            lastGps != null -> lastGps
+            else -> lastNet
+        }
+        if (fallbackLast != null) {
+            handleNewLocation(fallbackLast)
+        }
+
+        // 2. Continuous FusedLocationProviderClient updates
         val intervalMs = BuildConfig.LOCATION_INTERVAL_MS
         val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, intervalMs)
             .setMinUpdateIntervalMillis(intervalMs / 2)
@@ -119,7 +161,15 @@ class LocationService : LifecycleService() {
                 locationRequest,
                 locationCallback,
                 Looper.getMainLooper()
-            )
+            ).addOnFailureListener { e ->
+                Log.e("LocationService", "FusedLocationProviderClient error: ${e.message}", e)
+                trackingStateHolder.updateTelemetry {
+                    it.copy(
+                        connectionStatus = ConnectionStatus.ERROR,
+                        lastError = "GPS request error: ${e.localizedMessage}"
+                    )
+                }
+            }
         } catch (e: SecurityException) {
             trackingStateHolder.updateTelemetry {
                 it.copy(
@@ -128,6 +178,31 @@ class LocationService : LifecycleService() {
                 )
             }
             stopTrackingBroadcast()
+            return
+        }
+
+        // 3. Native LocationManager hardware fallback (streams directly from device GPS chip)
+        runCatching {
+            if (isGpsEnabled) {
+                locationManager?.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER,
+                    intervalMs,
+                    0f,
+                    nativeLocationListener,
+                    Looper.getMainLooper()
+                )
+            }
+            if (isNetworkEnabled) {
+                locationManager?.requestLocationUpdates(
+                    LocationManager.NETWORK_PROVIDER,
+                    intervalMs,
+                    0f,
+                    nativeLocationListener,
+                    Looper.getMainLooper()
+                )
+            }
+        }.onFailure { e ->
+            Log.w("LocationService", "Native LocationManager registration skipped: ${e.message}")
         }
     }
 
@@ -274,6 +349,9 @@ class LocationService : LifecycleService() {
         isTrackingActive = false
 
         fusedLocationClient.removeLocationUpdates(locationCallback)
+        runCatching {
+            locationManager?.removeUpdates(nativeLocationListener)
+        }
 
         // Mark driver status as OFFLINE on trip end or disconnect (Guardrail 1 & 6)
         lifecycleScope.launch {

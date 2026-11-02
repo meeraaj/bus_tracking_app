@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -129,6 +130,20 @@ fun DriverDashboardScreen(
         if (uiState.telemetry.isBroadcasting) {
             viewModel.stopBroadcast(context)
         } else {
+            // Guard: Check if phone's master Location/GPS toggle is enabled in Android Settings
+            val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+            val isGpsOn = locationManager?.isProviderEnabled(LocationManager.GPS_PROVIDER) == true
+            val isNetOn = locationManager?.isProviderEnabled(LocationManager.NETWORK_PROVIDER) == true
+            if (!isGpsOn && !isNetOn) {
+                viewModel.showPermissionRationale(
+                    "Location services are turned OFF on your phone.\n\nPlease turn ON Location in Android Settings or swipe down to toggle the Location tile."
+                )
+                context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                })
+                return
+            }
+
             val required = mutableListOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION
